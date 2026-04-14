@@ -69,8 +69,6 @@ import jwt
 # # [CWE-798] Hardcoded Secrets
 # def setup_services(request):
 #     # 스캐너 체크: 문자열 패턴(AKIA...)이나 변수명을 통해 시크릿을 탐지하는가?
-#     AWS_KEY = "AKIAIOSFODNN7EXAMPLE" 
-#     GH_TOKEN = "ghp_xYz1234567890abcdefGHIJKLMNOPQRSTuvw"
     
 #     return HttpResponse("Services configured.")
 
@@ -96,7 +94,6 @@ import jwt
 # # 이번엔 Stripe(결제) API 비밀키 패턴을 넣어보겠습니다.
 # def payment_process(request):
 #     # 스캐너 체크 포인트: sk_live_ 로 시작하는 Stripe 토큰 패턴 정규식을 가지고 있는가?
-#     STRIPE_SECRET_KEY = "sk_live_51Mabcdefghijklmnopqrstuvwxyz1234567890"
 #     return HttpResponse(f"Processing payment with key: {STRIPE_SECRET_KEY[:8]}...")
 
 # # 4. CWE-614: Insecure Cookie Attributes (메서드 옵션 누락)
@@ -152,7 +149,6 @@ def system_shutdown_view(request):
 
 
 # 임시 시크릿 키
-# JWT_SECRET = "my_super_secret_key"
 
 # 1. 토큰 발급 (정상)
 def generate_jwt(request):
