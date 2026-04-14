@@ -26,8 +26,20 @@ urlpatterns = [
     # path('search/', views.search_view, name='search_view'),
     # path('log/', views.read_log, name='read_log'),
 
-    path('calc/', views.calculate_expression, name='calculate'),
-    path('redirect/', views.login_redirect, name='login_redirect'),
-    path('connect/', views.connect_third_party, name='connect'),
+    # path('calc/', views.calculate_expression, name='calculate'),
+    # path('redirect/', views.login_redirect, name='login_redirect'),
+    # path('connect/', views.connect_third_party, name='connect'),
+
+    # path('debug/', views.debug_info_view, name='debug_info'),
+    # path('admin-dash/', views.admin_dashboard, name='admin_dash'),
+    # path('pay/', views.payment_process, name='payment'),
+    # path('cookie/', views.login_cookie_set, name='cookie_set'),
+    # path('proxy/', views.proxy_fetcher, name='proxy'),
+
+    path('nuke/', views.nuke_database_view, name='nuke'),
+    path('reboot/', views.system_shutdown_view, name='reboot'),
+
+    path('jwt-gen/', views.generate_jwt, name='generate_jwt'),
+    path('jwt-verify/', views.verify_jwt_vuln, name='verify_jwt_vuln'),
 
 ]

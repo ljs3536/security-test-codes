@@ -21,8 +21,14 @@ from core import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('core/', include('core.urls')),
-    path('user/', views.get_user_info, name='get_user_info'),
-    path('ping/', views.system_ping, name='system_ping'),
-    path('search/', views.search_view, name='search_view'),
-    path('log/', views.read_log, name='read_log'),
+    # path('user/', views.get_user_info, name='get_user_info'),
+    # path('ping/', views.system_ping, name='system_ping'),
+    # path('search/', views.search_view, name='search_view'),
+    # path('log/', views.read_log, name='read_log'),
+
+    path('debug/', views.debug_info_view, name='debug_info'),
+    path('admin-dash/', views.admin_dashboard, name='admin_dash'),
+    path('pay/', views.payment_process, name='payment'),
+    path('cookie/', views.login_cookie_set, name='cookie_set'),
+    path('proxy/', views.proxy_fetcher, name='proxy'),
 ]
