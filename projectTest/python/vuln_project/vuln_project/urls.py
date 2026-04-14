@@ -21,8 +21,13 @@ from core import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('core/', include('core.urls')),
-    path('user/', views.get_user_info, name='get_user_info'),
-    path('ping/', views.system_ping, name='system_ping'),
-    path('search/', views.search_view, name='search_view'),
-    path('log/', views.read_log, name='read_log'),
+    # path('user/', views.get_user_info, name='get_user_info'),
+    # path('ping/', views.system_ping, name='system_ping'),
+    # path('search/', views.search_view, name='search_view'),
+    # path('log/', views.read_log, name='read_log'),
+
+    path('calc/', views.calculate_expression, name='calculate'),
+    path('redirect/', views.login_redirect, name='login_redirect'),
+    path('connect/', views.connect_third_party, name='connect'),
+
 ]
