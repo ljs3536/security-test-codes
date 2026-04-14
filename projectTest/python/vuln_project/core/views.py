@@ -152,7 +152,7 @@ def system_shutdown_view(request):
 
 
 # 임시 시크릿 키
-JWT_SECRET = "my_super_secret_key"
+# JWT_SECRET = "my_super_secret_key"
 
 # 1. 토큰 발급 (정상)
 def generate_jwt(request):
