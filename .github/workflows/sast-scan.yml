@@ -1,9 +1,10 @@
+# .github/workflows/sast-scan.yml
 name: Remote SAST Scan
 
 on:
   push:
-    branches: ["master"] # main 브랜치에 푸시될 때마다 자동 실행
-  workflow_dispatch: # 깃허브 웹 화면에서 '수동' 실행 버튼 활성화
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   scan:
@@ -11,6 +12,7 @@ jobs:
     steps:
       - name: Trigger OCI SAST API
         run: |
-          # 깃허브 액션이 우리 OCI 서버의 API를 호출합니다.
-          # repo_url 파라미터에 현재 저장소 주소를 동적으로 전달합니다.
-          curl -X GET "http://168.107.27.132:8000/scan-git?repo_url=https://github.com/${{ github.repository }}"
+          # -H 옵션을 사용하여 헤더에 API Key를 포함합니다.
+          # ${{ secrets.SAST_API_KEY }}는 깃허브가 자동으로 마스킹하여 안전하게 전달합니다.
+          curl -X GET "http://168.107.27.132:8000/scan-git?repo_url=https://github.com/${{ github.repository }}" \
+               -H "x-api-key: ${{ secrets.SAST_API_KEY }}"
