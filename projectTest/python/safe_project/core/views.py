@@ -113,51 +113,128 @@ from urllib.parse import urlparse
 #         logging.getLogger(__name__).error(f"Fetch failed: {e}") # CWE-778(로깅 누락) 방어
 #         return HttpResponse("Error fetching data")
     
+# import jwt
+# import os
+# import logging
+# from django.http import HttpResponse
+# from django.conf import settings
 
+# # 로거 설정 (CWE-778 방어용)
+# logger = logging.getLogger(__name__)
 
-import jwt
-import os
-import logging
+# # [핵심 테스트] 안전한 JWT 검증 로직
+# def verify_jwt_safe(request):
+#     token = request.GET.get('token')
+    
+#     if not token:
+#         return HttpResponse("Token required", status=400)
+
+#     # 방어 1: 시크릿 키 하드코딩 제거 (CWE-489, 798 방어)
+#     # OS 환경변수에서 가져오거나, Django의 settings.SECRET_KEY를 활용합니다.
+#     secret_key = os.environ.get('JWT_SECRET_KEY', settings.SECRET_KEY)
+
+#     try:
+#         # 🛡️ 스캐너 체크 포인트:
+#         # verify_signature=False 옵션이 없고, 사용할 알고리즘(algorithms)을 명시한
+#         # '정석적인' decode 로직을 보고 스캐너가 아무 말 없이 통과시키는가?
+#         decoded_payload = jwt.decode(
+#             token, 
+#             secret_key, 
+#             algorithms=["HS256"] # 방어 2: 허용할 알고리즘 강제 지정
+#         )
+        
+#         if decoded_payload.get("role") == "admin":
+#             return HttpResponse("Welcome Admin! (Signature Verified Safely)")
+            
+#         return HttpResponse("Welcome User.")
+    
+#     # 방어 3: 구체적인 예외 처리 및 로깅 (CWE-396, 778 방어)
+#     except jwt.ExpiredSignatureError:
+#         logger.warning("Expired JWT token attempt")
+#         return HttpResponse("Token has expired", status=401)
+#     except jwt.InvalidTokenError as e:
+#         logger.error(f"Invalid JWT token attempt: {e}")
+#         return HttpResponse("Invalid token signature", status=401)
+#     except Exception as e:
+#         # 광범위한 예외(Exception)를 쓰더라도, 그 안에서 로깅을 명확히 남깁니다.
+#         logger.error(f"Unexpected error during JWT verification: {e}")
+#         return HttpResponse("Server error", status=500)
+
 from django.http import HttpResponse
-from django.conf import settings
+from django.db import connection
+# 모델이 있다고 가정 (예: from django.contrib.auth.models import User)
+import os
+import subprocess
+import lxml.etree
+import logging
 
-# 로거 설정 (CWE-778 방어용)
+# LDAP 필터 이스케이프용 (pip install ldap3 필요)
+try:
+    from ldap3.utils.conv import escape_filter_chars
+except ImportError:
+    escape_filter_chars = lambda x: x # 설치 안 된 경우를 위한 더미
+
 logger = logging.getLogger(__name__)
 
-# [핵심 테스트] 안전한 JWT 검증 로직
-def verify_jwt_safe(request):
-    token = request.GET.get('token')
-    
-    if not token:
-        return HttpResponse("Token required", status=400)
+# 1. SQLi 방어 (ORM 및 Parameterized Query)
+def sqli_view_1(request):
+    user_id = request.GET.get('id', '1')
+    # 방어 1: Django ORM 사용 (가장 안전한 방법, 내부적으로 파라미터화 처리)
+    # user = User.objects.filter(id=user_id).first()
+    return HttpResponse("User found safely (Method 1: ORM)")
 
-    # 방어 1: 시크릿 키 하드코딩 제거 (CWE-489, 798 방어)
-    # OS 환경변수에서 가져오거나, Django의 settings.SECRET_KEY를 활용합니다.
-    secret_key = os.environ.get('JWT_SECRET_KEY', settings.SECRET_KEY)
+def sqli_view_2(request):
+    user_id = request.GET.get('id', '1')
+    with connection.cursor() as cursor:
+        # 방어 2: 구조화된 쿼리(Parameterized Query) 사용
+        # 문자열 포맷팅(f-string, %s)을 절대 쓰지 않고, execute의 두 번째 인자로 리스트/튜플 전달
+        cursor.execute("SELECT * FROM users WHERE id = %s", [user_id])
+    return HttpResponse("User found safely (Method 2: Parameterized)")
 
+
+# 2. CMDi & LDAP 방어
+def cmdi_ldap_view(request):
+    cmd_arg = request.GET.get('cmd', 'ls')
+    ldap_filter = request.GET.get('filter', 'admin')
+
+    # 방어 1 (CMDi): os.system 대신 subprocess.run 사용 + 셸(shell=True) 사용 금지
+    # 명령과 인자를 리스트로 분리하여 실행 (주입 방어)
     try:
-        # 🛡️ 스캐너 체크 포인트:
-        # verify_signature=False 옵션이 없고, 사용할 알고리즘(algorithms)을 명시한
-        # '정석적인' decode 로직을 보고 스캐너가 아무 말 없이 통과시키는가?
-        decoded_payload = jwt.decode(
-            token, 
-            secret_key, 
-            algorithms=["HS256"] # 방어 2: 허용할 알고리즘 강제 지정
-        )
-        
-        if decoded_payload.get("role") == "admin":
-            return HttpResponse("Welcome Admin! (Signature Verified Safely)")
-            
-        return HttpResponse("Welcome User.")
-    
-    # 방어 3: 구체적인 예외 처리 및 로깅 (CWE-396, 778 방어)
-    except jwt.ExpiredSignatureError:
-        logger.warning("Expired JWT token attempt")
-        return HttpResponse("Token has expired", status=401)
-    except jwt.InvalidTokenError as e:
-        logger.error(f"Invalid JWT token attempt: {e}")
-        return HttpResponse("Invalid token signature", status=401)
+        subprocess.run(['echo', 'Running command:', cmd_arg], check=True, capture_output=True, text=True)
     except Exception as e:
-        # 광범위한 예외(Exception)를 쓰더라도, 그 안에서 로깅을 명확히 남깁니다.
-        logger.error(f"Unexpected error during JWT verification: {e}")
-        return HttpResponse("Server error", status=500)
+        logger.error(f"Command execution failed: {e}")
+
+    # 방어 2 (LDAP): 필터에 사용되는 특수문자(*, (, ), \, NUL)를 완벽히 이스케이프 처리
+    safe_filter = escape_filter_chars(ldap_filter)
+    search_filter = f"(&(uid={safe_filter})(objectClass=user))"
+    
+    return HttpResponse(f"Processed safely. LDAP filter: {search_filter}")
+
+
+# 3. TOCTOU & XXE 방어
+def toctou_xxe_view(request):
+    file_path = "/tmp/test_file.xml"
+    xml_content = ""
+    
+    # 방어 1 (TOCTOU): Check(exists)를 지우고, 바로 Use(open) 시도 후 예외 처리 (EAFP 패턴)
+    try:
+        with open(file_path, 'r') as f:
+            xml_content = f.read()
+    except FileNotFoundError:
+        return HttpResponse("File not found")
+    except Exception as e:
+        logger.error(f"File read error: {e}")
+        return HttpResponse("Error reading file")
+
+    # 방어 2 (XXE): 외부 엔티티 참조 비활성화 (resolve_entities=False)
+    if xml_content:
+        try:
+            # 엔진 체크 포인트: False로 설정된 것을 보고 XXE 경고를 끄는가?
+            parser = lxml.etree.XMLParser(resolve_entities=False)
+            tree = lxml.etree.fromstring(xml_content, parser=parser)
+            return HttpResponse("XML parsed safely")
+        except lxml.etree.XMLSyntaxError as e:
+            logger.warning(f"XML Parsing failed: {e}")
+            return HttpResponse("Invalid XML")
+            
+    return HttpResponse("Empty file")

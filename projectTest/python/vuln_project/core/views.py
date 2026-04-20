@@ -1,11 +1,11 @@
-from django.conf import settings
-from django.http import HttpResponse
-from django.db import connection
-from django.shortcuts import redirect
-import os
-import requests
-from django.contrib.auth.models import User
-import jwt
+# from django.conf import settings
+# from django.http import HttpResponse
+# from django.db import connection
+# from django.shortcuts import redirect
+# import os
+# import requests
+# from django.contrib.auth.models import User
+# import jwt
 
 # # 1. SQL Injection (CWE-89)
 # # Django ORM 대신 Raw Query를 사용하며 사용자 입력을 직접 포맷팅함
@@ -120,65 +120,126 @@ import jwt
 #         return HttpResponse("Error fetching data")
 
 
-# 1. CWE-287 (인증 우회) + 파괴적인 DB 명령 (User.objects.delete)
-def nuke_database_view(request):
-    # 외부 입력(쿠키)으로 권한을 체크합니다. (매우 취약)
-    is_super_admin = request.COOKIES.get('role')
+# # 1. CWE-287 (인증 우회) + 파괴적인 DB 명령 (User.objects.delete)
+# def nuke_database_view(request):
+#     # 외부 입력(쿠키)으로 권한을 체크합니다. (매우 취약)
+#     is_super_admin = request.COOKIES.get('role')
     
-    if is_super_admin == 'god_mode':
-        # [스캐너 체크 포인트 1] 
-        # 위험한 Sink(DB 삭제)가 존재하므로, 이제는 앞단의 쿠키 기반 인증을 CWE-287로 경고하는가?
-        try:
-            User.objects.all().delete()
-            return HttpResponse("All users have been deleted.")
-        except Exception as e:
-            return HttpResponse(f"Error: {e}")
+#     if is_super_admin == 'god_mode':
+#         # [스캐너 체크 포인트 1] 
+#         # 위험한 Sink(DB 삭제)가 존재하므로, 이제는 앞단의 쿠키 기반 인증을 CWE-287로 경고하는가?
+#         try:
+#             User.objects.all().delete()
+#             return HttpResponse("All users have been deleted.")
+#         except Exception as e:
+#             return HttpResponse(f"Error: {e}")
             
-    return HttpResponse("Access Denied: You cannot delete the DB.")
+#     return HttpResponse("Access Denied: You cannot delete the DB.")
 
-# 2. CWE-287 (인증 우회) + 파괴적인 OS 명령 (os.system)
-def system_shutdown_view(request):
-    # 역시 쿠키로만 인증을 처리합니다.
-    auth_token = request.COOKIES.get('auth_token')
+# # 2. CWE-287 (인증 우회) + 파괴적인 OS 명령 (os.system)
+# def system_shutdown_view(request):
+#     # 역시 쿠키로만 인증을 처리합니다.
+#     auth_token = request.COOKIES.get('auth_token')
     
-    if auth_token == 'secret_admin_token_123':
-        # [스캐너 체크 포인트 2]
-        # os.system('reboot')라는 명백한 위험 함수가 실행되는데, 
-        # 이 조건문이 쿠키에 의존하고 있다는 사실을 분석해 내는가?
-        os.system('reboot') 
-        return HttpResponse("Server is rebooting...")
+#     if auth_token == 'secret_admin_token_123':
+#         # [스캐너 체크 포인트 2]
+#         # os.system('reboot')라는 명백한 위험 함수가 실행되는데, 
+#         # 이 조건문이 쿠키에 의존하고 있다는 사실을 분석해 내는가?
+#         os.system('reboot') 
+#         return HttpResponse("Server is rebooting...")
         
-    return HttpResponse("Access Denied.")
+#     return HttpResponse("Access Denied.")
 
 
-# 임시 시크릿 키
-JWT_SECRET = "my_super_secret_key"
+# # 임시 시크릿 키
+# JWT_SECRET = "my_super_secret_key"
 
-# 1. 토큰 발급 (정상)
-def generate_jwt(request):
-    # 'admin' 권한을 가진 토큰을 발행
-    payload = {"user": "test_user", "role": "admin"}
-    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-    return HttpResponse(f"Generated Token: {token}")
+# # 1. 토큰 발급 (정상)
+# def generate_jwt(request):
+#     # 'admin' 권한을 가진 토큰을 발행
+#     payload = {"user": "test_user", "role": "admin"}
+#     token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+#     return HttpResponse(f"Generated Token: {token}")
 
-# 2. [핵심 테스트] JWT 검증 누락 (CWE-287 / CWE-347)
-def verify_jwt_vuln(request):
-    token = request.GET.get('token')
+# # 2. [핵심 테스트] JWT 검증 누락 (CWE-287 / CWE-347)
+# def verify_jwt_vuln(request):
+#     token = request.GET.get('token')
     
-    if not token:
-        return HttpResponse("Token required")
+#     if not token:
+#         return HttpResponse("Token required")
 
+#     try:
+#         # 🚨 스캐너 체크 포인트: 엔진이 'options={"verify_signature": False}' 라는 
+#         # 명시적인 보안 해제 옵션을 텍스트/구문 트리(AST) 수준에서 잡아내는가?
+#         decoded_payload = jwt.decode(token, options={"verify_signature": False})
+        
+#         # 공격자가 서명 없이 payload만 조작해서 넘겨도 이 조건문을 통과해 버림
+#         if decoded_payload.get("role") == "admin":
+#             return HttpResponse("Welcome Admin! (Signature was NOT verified)")
+            
+#         return HttpResponse("Welcome User.")
+    
+#     except jwt.DecodeError:
+#         return HttpResponse("Invalid token format")
+    
+
+from django.http import HttpResponse
+from django.db import connection
+import os
+import lxml.etree
+import time
+
+# 1. Python SQLi v2 (중복 탐지 및 회귀 테스트)
+# 동일한 Raw SQL 패턴이 서로 다른 뷰에서 발생할 때 엔진이 중복 제거를 잘 하는지 확인
+def sqli_view_1(request):
+    user_id = request.GET.get('id', '1')
+    cursor = connection.cursor()
+    # [테스트 포인트] Raw SQL 사용 1
+    query = f"SELECT * FROM users WHERE id = '{user_id}'"
+    cursor.execute(query)
+    return HttpResponse("User found (Method 1)")
+
+def sqli_view_2(request):
+    user_id = request.GET.get('id', '1')
+    with connection.cursor() as cursor:
+        # [테스트 포인트] Raw SQL 사용 2 (View 1과 유사하나 컨텍스트가 다름)
+        cursor.execute("SELECT * FROM users WHERE id = '%s'" % user_id)
+    return HttpResponse("User found (Method 2)")
+
+
+# 2. Python CMDi (Severity CRITICAL) & LDAP Injection
+def cmdi_ldap_view(request):
+    cmd = request.GET.get('cmd', 'ls')
+    ldap_filter = request.GET.get('filter', 'admin')
+
+    # [테스트 포인트] CMDi: OS 명령어 실행 (CRITICAL 조정 확인용)
+    os.system(f"echo 'Running command: {cmd}'")
+
+    # [테스트 포인트] LDAP Injection: 검증 없는 필터 조작 (CWE-90)
+    # 실제 ldap 라이브러리가 없어도 패턴 매칭으로 잡는지 확인용 가상 코드
+    search_filter = f"(&(uid={ldap_filter})(objectClass=user))"
+    ldap_connection.search_s('dc=example,dc=com', ldap.SCOPE_SUBTREE, search_filter)
+    
+    return HttpResponse(f"Processed CMDi and LDAP with filter: {search_filter}")
+
+
+# 3. Python TOCTOU & XXE (라인 매핑 정확도 테스트)
+def toctou_xxe_view(request):
+    file_path = "/tmp/test_file.xml"
+    
+    # [테스트 포인트] TOCTOU (CWE-367): Check와 Use 사이의 간극
+    if os.path.exists(file_path): # Time of Check
+        time.sleep(1) # 공격자가 파일을 교체할 수 있는 시간 벌기
+        with open(file_path, 'r') as f: # Time of Use
+            xml_content = f.read()
+    else:
+        return HttpResponse("File not found")
+
+    # [테스트 포인트] XXE (CWE-611): lxml을 이용한 외부 엔티티 참조
     try:
-        # 🚨 스캐너 체크 포인트: 엔진이 'options={"verify_signature": False}' 라는 
-        # 명시적인 보안 해제 옵션을 텍스트/구문 트리(AST) 수준에서 잡아내는가?
-        decoded_payload = jwt.decode(token, options={"verify_signature": False})
-        
-        # 공격자가 서명 없이 payload만 조작해서 넘겨도 이 조건문을 통과해 버림
-        if decoded_payload.get("role") == "admin":
-            return HttpResponse("Welcome Admin! (Signature was NOT verified)")
-            
-        return HttpResponse("Welcome User.")
-    
-    except jwt.DecodeError:
-        return HttpResponse("Invalid token format")
-    
+        parser = lxml.etree.XMLParser(resolve_entities=True) # 위험한 설정
+        # 엔진이 정확히 아래 라인을 XXE 발생 지점으로 매핑하는지 확인
+        tree = lxml.etree.fromstring(xml_content, parser=parser)
+        return HttpResponse(lxml.etree.tostring(tree))
+    except Exception as e:
+        return HttpResponse(f"XML Error: {e}")

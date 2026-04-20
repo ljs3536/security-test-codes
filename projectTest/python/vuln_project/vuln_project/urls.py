@@ -36,10 +36,15 @@ urlpatterns = [
     # path('cookie/', views.login_cookie_set, name='cookie_set'),
     # path('proxy/', views.proxy_fetcher, name='proxy'),
 
-    path('nuke/', views.nuke_database_view, name='nuke'),
-    path('reboot/', views.system_shutdown_view, name='reboot'),
+    # path('nuke/', views.nuke_database_view, name='nuke'),
+    # path('reboot/', views.system_shutdown_view, name='reboot'),
 
-    path('jwt-gen/', views.generate_jwt, name='generate_jwt'),
-    path('jwt-verify/', views.verify_jwt_vuln, name='verify_jwt_vuln'),
+    # path('jwt-gen/', views.generate_jwt, name='generate_jwt'),
+    # path('jwt-verify/', views.verify_jwt_vuln, name='verify_jwt_vuln'),
+
+    path('sqliv1/', views.sqli_view_1, name='sqliv1'),
+    path('sqliv2/', views.sqli_view_2, name='sqliv2'),
+    path('cmdildap/', views.cmdi_ldap_view, name='cmdildap'),
+    path('ttxxe/', views.toctou_xxe_view, name='ttxxe'),
 
 ]
