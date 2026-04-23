@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
-
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -19,23 +19,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# 1. SECRET_KEY: 환경 변수에서 가져오도록 수정 (하드코딩 제거)
-# 스캐너 체크 포인트: os.environ.get을 통해 외부에서 주입받는 패턴을 '안전'으로 인식하는가?
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'default-key-only-for-dev')
 
-# 2. DEBUG: 상용 환경을 가정하여 False로 설정
-DEBUG = False
+DEBUG = True
 
-# 3. ALLOWED_HOSTS: 와일드카드(*) 제거하고 명시적인 도메인/IP만 허용
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['*']
 
-# 4. Cookie 보안 설정 (운영 환경 기준 필수 설정들 추가)
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Application definition
 
