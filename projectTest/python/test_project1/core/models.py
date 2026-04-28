@@ -4,7 +4,6 @@ from django.db import connection
 class VIPUserManager(models.Manager):
     def raw_search_vuln(self, search_term):
         """[취약한 코드] CWE-89: f-string을 이용한 Raw SQL 포매팅"""
-        # 스캐너가 views.py에서 넘어온 search_term이 오염된 상태임을 기억하고 여기서 경고를 띄워야 합니다.
         query = f"SELECT id, username, credit FROM core_vipuser WHERE username LIKE '%{search_term}%'"
         
         with connection.cursor() as cursor:
