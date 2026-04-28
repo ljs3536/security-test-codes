@@ -1,62 +1,69 @@
 import os
-from django.http import JsonResponse
-from django.views import View
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.files.storage import FileSystemStorage
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
+import random
+import hashlib
+import secrets
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_http_methods
 
 # ==========================================
-# [Target 1] CBV 인증 믹스인 (CWE-287 / CWE-285)
+# [Target 1] Path Traversal (CWE-22)
 # ==========================================
 
-# (테스트 집중을 위해 CSRF는 잠시 꺼둡니다)
-@method_decorator(csrf_exempt, name='dispatch')
-class ProfileUpdateVulnView(View):
-    """[취약한 코드] 인증 없이 접근 가능한 클래스 기반 뷰(CBV)"""
-    def post(self, request):
-        return JsonResponse({"status": "누구나 프로필 수정 가능 (취약)"})
+@require_http_methods(["GET"])
+def read_log_vuln(request):
+    """[취약한 코드] CWE-22: 검증 없는 파일 경로 접근"""
+    filename = request.GET.get('file', 'error.log')
+    
+    # 해커가 ../../../etc/passwd 를 넣으면 로컬 시스템 파일이 노출됨!
+    filepath = os.path.join('/var/log/myapp/', filename)
+    
+    try:
+        # Taint Sink: open() 함수
+        with open(filepath, 'r') as f:
+            return HttpResponse(f.read(), content_type='text/plain')
+    except Exception as e:
+        return HttpResponse("File not found", status=404)
 
-@method_decorator(csrf_exempt, name='dispatch')
-class ProfileUpdateSafeView(LoginRequiredMixin, View):
-    """[안전한 코드] Django 고유의 LoginRequiredMixin 사용"""
-    # 스캐너가 다중 상속된 'LoginRequiredMixin'을 인증 장치로 인지할 수 있을까요?
-    def post(self, request):
-        return JsonResponse({"status": "인증된 사용자만 수정 가능 (안전)"})
+@require_http_methods(["GET"])
+def read_log_safe(request):
+    """[안전한 코드] os.path.basename을 이용한 경로 조작 방어"""
+    filename = request.GET.get('file', 'error.log')
+    
+    # [안전한 조치] 경로 문자열(../)을 모두 날려버리고 순수 파일명만 추출
+    safe_filename = os.path.basename(filename)
+    filepath = os.path.join('/var/log/myapp/', safe_filename)
+    
+    try:
+        with open(filepath, 'r') as f:
+            return HttpResponse(f.read(), content_type='text/plain')
+    except Exception as e:
+        return HttpResponse("File not found", status=404)
 
 
 # ==========================================
-# [Target 2] 위험한 파일 업로드 (CWE-434)
+# [Target 2] Weak Crypto & Random (CWE-327 / CWE-330)
 # ==========================================
 
-@csrf_exempt
-def file_upload_vuln(request):
-    """[취약한 코드] CWE-434: 확장자 검증 없는 파일 업로드"""
-    if request.method == 'POST' and request.FILES.get('file'):
-        upload_file = request.FILES['file']
-        fs = FileSystemStorage()
-        
-        # 해커가 웹쉘(webshell.php)이나 악성 스크립트를 올려도 그대로 저장됨!
-        # 관건: 스캐너가 프레임워크의 fs.save() 메서드를 위험한 Sink로 인지하는가?
-        filename = fs.save(upload_file.name, upload_file)
-        return JsonResponse({"uploaded": filename})
-        
-    return JsonResponse({"error": "No file"}, status=400)
+@require_http_methods(["GET"])
+def generate_token_vuln(request):
+    """[취약한 코드] CWE-330 (취약한 난수) & CWE-327 (취약한 해시)"""
+    
+    # 1. 취약한 난수 생성기 사용 (예측 가능)
+    otp_code = str(random.randint(100000, 999999))
+    
+    # 2. 크랙 가능한 구형 해시 알고리즘 사용
+    hashed_token = hashlib.md5(otp_code.encode()).hexdigest()
+    
+    return JsonResponse({"token": hashed_token})
 
-@csrf_exempt
-def file_upload_safe(request):
-    """[안전한 코드] 화이트리스트 기반 확장자 검증"""
-    if request.method == 'POST' and request.FILES.get('file'):
-        upload_file = request.FILES['file']
-        ext = os.path.splitext(upload_file.name)[1].lower()
-        
-        # [안전한 조치] 허용된 이미지/문서 확장자만 업로드 가능하도록 통제
-        ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.pdf']
-        if ext not in ALLOWED_EXTENSIONS:
-            return JsonResponse({"error": "허용되지 않은 확장자입니다."}, status=403)
-            
-        fs = FileSystemStorage()
-        filename = fs.save(upload_file.name, upload_file)
-        return JsonResponse({"uploaded": filename})
-        
-    return JsonResponse({"error": "No file"}, status=400)
+@require_http_methods(["GET"])
+def generate_token_safe(request):
+    """[안전한 코드] 암호학적으로 안전한 모듈 사용"""
+    
+    # 1. [안전한 조치] OS 레벨의 안전한 난수 생성기 사용
+    otp_code = str(secrets.randbelow(900000) + 100000)
+    
+    # 2. [안전한 조치] SHA-256 이상의 안전한 해시 사용
+    hashed_token = hashlib.sha256(otp_code.encode()).hexdigest()
+    
+    return JsonResponse({"token": hashed_token})
