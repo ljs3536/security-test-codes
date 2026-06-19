@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class CWE_94_95_CodeInjection {
+public class CWE_94_CodeInjection {
 
     // 분석기 테스트 포인트: 
     // Source: @RequestParam("expression") 으로 들어온 오염된 데이터가

@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // 사용자가 매우 큰 값을 입력하면 OutOfMemoryError 발생 가능
-public class ResourceAllocationServlet extends HttpServlet {
+public class CWE_770_Resource_Exhaustion extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
         String countParam = request.getParameter("count");

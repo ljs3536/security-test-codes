@@ -3,7 +3,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-public class CommandInjectionServlet extends HttpServlet {
+public class CWE_78_Command_Injection extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         // 사용자가 파일명을 입력 (예: "test.txt; rm -rf /")
         String filename = request.getParameter("filename");

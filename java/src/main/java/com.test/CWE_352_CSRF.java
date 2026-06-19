@@ -3,7 +3,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/admin")
-public class AdminController {
+public class CWE_352_CSRF {
 
     // @PreAuthorize를 통해 인증(Authenticated) 및 권한(ADMIN) 체크 강제
     @PreAuthorize("hasRole('ADMIN')")
