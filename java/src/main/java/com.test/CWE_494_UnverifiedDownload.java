@@ -1,40 +1,33 @@
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URL;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
-@RestController
+
 public class CWE_494_UnverifiedDownload {
+    /**
+     * [취약점] 무결성 검증 없이 외부 소스를 다운로드하여 실행
+     * 공격자가 중간에서 파일을 변조하면 임의의 코드 실행 가능
+     */
+    public void downloadAndExecutePlugin() throws Exception {
+        String urlString = "https://trusted-server.com/plugin.jar";
+        URL url = new URL(urlString);
+        Path tempPath = Files.createTempFile("plugin", ".jar");
 
-    // 분석기 테스트 포인트:
-    // URL 통신으로 파일을 내려받은 후, MessageDigest나 Signature 객체를 사용한 
-    // 해시/서명 검증 로직 없이 Runtime.exec()나 ClassLoader로 실행하는 패턴 감지
-    @PostMapping("/update-system")
-    public String downloadAndApplyUpdate() {
-        try {
-            // 취약점 1: HTTPS가 아닌 HTTP를 사용하여 중간자 공격(MITM)에 취약함
-            URL updateUrl = new URL("http://update.example.com/latest-patch.jar");
-            InputStream in = updateUrl.openStream();
-            
-            File patchFile = new File("/tmp/latest-patch.jar");
-            FileOutputStream out = new FileOutputStream(patchFile);
-            
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = in.read(buffer)) != -1) {
-                out.write(buffer, 0, bytesRead);
-            }
-            in.close();
-            out.close();
-
-            // 취약점 2: 다운로드한 파일의 무결성(해시값이나 전자서명) 검증 없이 바로 실행 (VULNERABLE)
-            Runtime.getRuntime().exec("java -jar " + patchFile.getAbsolutePath());
-
-            return "Update applied successfully!";
-        } catch (Exception e) {
-            return "Update failed";
+        // 1. 외부에서 파일 다운로드 (무결성 체크 없음)
+        try (InputStream in = url.openStream()) {
+            Files.copy(in, tempPath, StandardCopyOption.REPLACE_EXISTING);
         }
+
+        // 2. 검증 단계 없이 바로 실행/로드
+        // (예: ClassLoader를 통해 jar 내의 클래스를 동적 로드)
+        System.out.println("다운로드 완료. 검증 없이 로드합니다: " + tempPath.toString());
+        loadPlugin(tempPath);
+    }
+
+    private void loadPlugin(Path path) {
+        // 실제로는 여기서 ClassLoader나 Reflection을 사용해 로직 실행
+        System.out.println("플러그인 로드 성공!");
     }
 }
